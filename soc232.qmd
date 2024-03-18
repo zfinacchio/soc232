@@ -1,0 +1,77 @@
+---
+title: "SOC 232 GSS Analytics"
+author: "Zachary Finacchio"
+format:
+  html:
+    embed-resources: true
+toc: true
+execute:
+  echo: false
+  warning: false
+  message: false
+---
+
+```{r packages}
+library(tidyverse)
+library(here)
+library(readxl)
+```
+
+```{r html-setup}
+# set width of code output
+options(width = 65)
+
+# set figure parameters for knitr
+knitr::opts_chunk$set(
+  fig.width = 9, # 7" width
+  fig.asp = 0.666, # the golden ratio
+  fig.retina = 3, # dpi multiplier for displaying HTML output on retina
+  fig.align = "center", # center align figures
+  dpi = 300 # higher dpi, sharper image
+)
+```
+
+```{r load-data}
+GSS <- read_excel(here::here("data/GSS.xlsx"), range = "A1:K3545",
+                     col_names = TRUE)
+```
+
+```{r data-cleaning}
+GSS <- GSS |>
+  filter(age < 36,
+         age != ".n:  No answer") |>
+  mutate(partners = if_else(partners == ".i:  Inapplicable" | partners == "No partners",
+                            "0", as.character(partners)),
+         partners = if_else(partners == ".d:  Do not Know/Cannot Choose",
+                            "11-20 partners", as.character(partners)),
+         nummen = if_else(nummen == ".i:  Inapplicable", "0", as.character(nummen)),
+         nummen = if_else(nummen == ".n:  No answer", NA, as.character(nummen)),	
+         numwomen = if_else(numwomen == ".i:  Inapplicable", "0", as.character(numwomen)),
+         numwomen = if_else(numwomen == ".n:  No answer", NA, as.character(numwomen)),
+         fear = case_when(fear == "YES" | fear == "NO" ~ fear,
+                          .default = NA),
+         matesex = if_else(matesex == ".i:  Inapplicable", "NO", matesex)
+         ) 
+```
+
+```{r data-category-cleaning}
+myGSS <- GSS |>
+  mutate(sexornt = case_when(sexornt == "Heterosexual or straight" ~ "Heterosexual",
+                             sexornt == "Gay, lesbian, or homosexual" |
+                               sexornt == ".d:  Do not Know/Cannot Choose" |
+                               sexornt == "Bisexual" ~ "Queer"),
+         lifepartners = as.double(nummen) + as.double(numwomen)
+         )
+         
+```
+
+```{r}
+ggplot(data = myGSS |> na.omit(sexornt), aes(y = lifepartners, x = sexornt, fill = sex)) +
+  geom_col()
+
+myGSS |> filter(sexornt == "Queer") |> count(lifepartners)
+myGSS |> filter(sexornt == "Heterosexual") |> count(lifepartners)
+
+ggplot(data = myGSS |> na.omit(sexornt), aes(x = lifepartners)) +
+  geom_histogram()
+```
