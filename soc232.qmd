@@ -66,12 +66,71 @@ myGSS <- GSS |>
 ```
 
 ```{r}
-ggplot(data = myGSS |> na.omit(sexornt), aes(y = lifepartners, x = sexornt, fill = sex)) +
-  geom_col()
+myGSS <- myGSS |>
+  mutate(combos = case_when(sexornt == "Queer" & sex == "MALE" ~ "Queer Man",
+                            sexornt == "Queer" & sex == "FEMALE" ~ "Queer Woman",
+                            sexornt == "Heterosexual" & sex == "MALE" ~ "Heterosexual Man",
+                            sexornt == "Heterosexual" & sex == "FEMALE" ~ "Heterosexual Woman"))
+```
 
-myGSS |> filter(sexornt == "Queer") |> count(lifepartners)
-myGSS |> filter(sexornt == "Heterosexual") |> count(lifepartners)
 
-ggplot(data = myGSS |> na.omit(sexornt), aes(x = lifepartners)) +
-  geom_histogram()
+```{r lifepartners}
+mean_partners_data <- 
+  myGSS |>
+  na.omit(sexornt) |>
+  group_by(combos)|>
+  mutate(mean_part = mean(lifepartners)) |>
+  mutate(sd = sd(lifepartners)) |>
+  count(combos, mean_part, sd) |>
+  mutate(se = sd/sqrt(n))
+
+ggplot(data = mean_partners_data, aes(y = mean_part, x = combos)) +
+  geom_col() +
+  geom_errorbar(aes(ymin = mean_part - se, ymax = mean_part + se)) +
+  labs(y = "Mean Number of Lifetime Sexual Partners",
+       x = "Sex and Sexual Orientation") +
+  theme_bw()
+
+# Healy
+
+
+
+```
+```{r}
+myGSS |> t.test(lifepartners)
+```
+
+```{r fear}
+fear_prop_data <- myGSS |>
+  na.omit(sexornt) |>
+  group_by(sex, sexornt, combos) |>
+  count(fear) |>
+  mutate(prop = n/sum(n)) |>
+  mutate(sd = sd(prop))
+```
+
+```{r}
+fear_prop_data <- 
+  myGSS |>
+  na.omit(sexornt) |>
+  group_by(sex, sexornt, combos)|>
+  count(fear, combos) |>
+  mutate(prop = n/sum(n))  |>
+  mutate(sd = sd(prop)) |>
+  mutate(se = sd/sqrt(sum(n))) 
+
+fear_prop_data
+```
+|>
+  mutate(prop = mean(lifepartners)) |>
+  mutate(sd = sd(lifepartners)) |>
+  count(combos, mean_part, sd) |>
+  mutate(se = sd/sqrt(n))
+```
+
+ggplot(data = fear_prop_data |> filter(fear == "YES"), aes(y = prop, x = combos)) +
+  geom_col() +
+  labs(y = "Percentage Afraid to Walk Alone At Night",
+       x = "Sex and Sexual Orientation") # +
+ # geom_errorbar(aes(ymin = prop - sd, ymax = prop + sd))
 ```
