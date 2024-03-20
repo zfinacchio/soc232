@@ -15,7 +15,8 @@ execute:
 library(tidyverse)
 library(here)
 library(readxl)
-library(forcats)
+library(knitr)
+library(broom)
 ```
 
 ```{r html-setup}
@@ -61,17 +62,20 @@ myGSS <- GSS |>
                              sexornt == "Gay, lesbian, or homosexual" |
                                sexornt == ".d:  Do not Know/Cannot Choose" |
                                sexornt == "Bisexual" ~ "Queer"),
-         lifepartners = as.double(nummen) + as.double(numwomen)
-         )
+         lifepartners = as.double(nummen) + as.double(numwomen),
+         sex = case_when(sex == "MALE" ~ "Men",
+                         sex == "FEMALE" ~ "Women")
+         ) |>
+  na.omit(sexornt)
          
 ```
 
 ```{r}
 myGSS <- myGSS |>
-  mutate(combos = case_when(sexornt == "Queer" & sex == "MALE" ~ "Queer Men",
-                            sexornt == "Queer" & sex == "FEMALE" ~ "Queer Women",
-                            sexornt == "Heterosexual" & sex == "MALE" ~ "Heterosexual Men",
-                            sexornt == "Heterosexual" & sex == "FEMALE" ~ "Heterosexual Women"))
+  mutate(combos = case_when(sexornt == "Queer" & sex == "Men" ~ "Queer Men",
+                            sexornt == "Queer" & sex == "Women" ~ "Queer Women",
+                            sexornt == "Heterosexual" & sex == "Men" ~ "Heterosexual Men",
+                            sexornt == "Heterosexual" & sex == "Women" ~ "Heterosexual Women"))
 ```
 
 
@@ -84,20 +88,22 @@ mean_partners_data <-
   mutate(sd = sd(lifepartners)) |>
   count(combos, mean_part, sd) |>
   mutate(se = sd/sqrt(n))
+
+mean_partners_data
 ```
 
 ```{r lifepartners-plor}
 ggplot(data = mean_partners_data, aes(y = mean_part, x = sexornt, fill = sex)) +
   geom_col(position = "dodge") +
-  geom_text(aes(label = round(mean_part, 3), y = mean_part + 0.5, x = c(0.77, 1.225, 1.77, 2.225), position = sex)) +
+  geom_text(aes(label = round(mean_part, 3), y = mean_part + 0.5, x = c(0.77, 1.225, 1.77, 2.225)), family = "serif", size = 6) +
  # geom_errorbar(aes(ymin = mean_part - se, ymax = mean_part + se)) +
   labs(y = "Mean Number of Lifetime Sexual Partners",
        x = "Sexual Orientation",
        fill = "Sex") +
-  scale_fill_manual(values = c("pink", "blue")) +
+  scale_fill_manual(values = c("blue", "pink")) +
   theme_classic() +
   theme(
-    text = element_text(family = "Times New Roman", size = 12)
+    text = element_text(family = "serif", size = 20)
   )
 ```
 
@@ -129,15 +135,26 @@ fear_prop_data
 ```{r fear-plot}
 ggplot(data = fear_prop_data, aes(y = prop, x = sexornt, fill = sex)) +
   geom_col(position = "dodge") +
-    labs(y = "Percentage Afraid to Walk Alone at Night",
+    labs(y = "Proportion Afraid to Walk Alone at Night",
        x = "Sexual Orientation",
        fill = "Sex") +
-  geom_text(aes(label = round(prop, 3), y = prop + 0.02, x = c(0.775, 1.225, 1.775, 2.225), position = sex)) +
-  scale_fill_manual(values = c("pink", "blue")) + 
+  geom_text(aes(label = round(prop, 3), y = prop + 0.02, x = c(0.775, 1.225, 1.775, 2.225)), family = "serif", size = 6) +
+  scale_fill_manual(values = c("blue", "pink")) + 
   theme_classic() +
   theme(
-    text = element_text(family = "Times New Roman", size = 12)
+    text = element_text(family = "serif", size = 20)
   )
  # geom_errorbar(aes(ymin = prop - sd, ymax = prop + sd))
 ```
 
+```{r lm-model-all-vars}
+myGSS$sexornt <- as.factor(myGSS$sexornt)
+
+myGSS$sexornt <- fct_relevel(myGSS$sexornt, "Queer", "Heterosexual")
+
+model <- lm(lifepartners ~ sexornt + fear + sex + fear*sex*sexornt, data = myGSS |> na.omit(sexornt))
+
+tidy(model, conf.int = TRUE, conf.level = 0.9) |>
+  kable(digits = 5, family = "serif")
+```
+Table 1 uses a linear model to investigate how statistically significantly sexual orientation, fear of walking alone at night, and sex can predict the number of sexual partners in people's lifetimes. The model predicts, with a remarkably low p-value of 0, that, on average, queer men who are not afraid of walking alone at night have between approximately 9.4 and approximately 17.8 lifetime sexual partners. Because all of the provided independent variables have a p-value of less than 0.1 associated with them, the model demonstrates at least 90% confidence in the statistical significance of all of the predicted relationships between these variables and the number of sexual partners. Because the p-value for sexual orientation's independent variable is less than 0.05, I can conclude with 95% confidence that there is a significantly positive relationship between queerness and number of lifetime sexual partners, reaffirming that queer people are statistically likely to have more sexual partners and suggesting that, on average, holding all other variables constant, queer young adults have approximately 3 more sexual partners than heterosexual peers. The relationship of the remaining two independent variables, fear of walking alone at night and sex, with the dependent variable, number of sexual partners, are not proven to be statistically significant to alpha-level 0.05 with the available data. 
