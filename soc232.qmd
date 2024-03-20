@@ -95,7 +95,10 @@ ggplot(data = mean_partners_data, aes(y = mean_part, x = sexornt, fill = sex)) +
        x = "Sexual Orientation",
        fill = "Sex") +
   scale_fill_manual(values = c("pink", "blue")) +
-  theme_classic()
+  theme_classic() +
+  theme(
+    text = element_text(family = "Times New Roman", size = 12)
+  )
 ```
 
 ```{r fear-manipulation}
@@ -131,7 +134,10 @@ ggplot(data = fear_prop_data, aes(y = prop, x = sexornt, fill = sex)) +
        fill = "Sex") +
   geom_text(aes(label = round(prop, 3), y = prop + 0.02, x = c(0.775, 1.225, 1.775, 2.225), position = sex)) +
   scale_fill_manual(values = c("pink", "blue")) + 
-  theme_classic() # +
+  theme_classic() +
+  theme(
+    text = element_text(family = "Times New Roman", size = 12)
+  )
  # geom_errorbar(aes(ymin = prop - sd, ymax = prop + sd))
 ```
 
