@@ -15,6 +15,7 @@ execute:
 library(tidyverse)
 library(here)
 library(readxl)
+library(forcats)
 ```
 
 ```{r html-setup}
@@ -67,40 +68,37 @@ myGSS <- GSS |>
 
 ```{r}
 myGSS <- myGSS |>
-  mutate(combos = case_when(sexornt == "Queer" & sex == "MALE" ~ "Queer Man",
-                            sexornt == "Queer" & sex == "FEMALE" ~ "Queer Woman",
-                            sexornt == "Heterosexual" & sex == "MALE" ~ "Heterosexual Man",
-                            sexornt == "Heterosexual" & sex == "FEMALE" ~ "Heterosexual Woman"))
+  mutate(combos = case_when(sexornt == "Queer" & sex == "MALE" ~ "Queer Men",
+                            sexornt == "Queer" & sex == "FEMALE" ~ "Queer Women",
+                            sexornt == "Heterosexual" & sex == "MALE" ~ "Heterosexual Men",
+                            sexornt == "Heterosexual" & sex == "FEMALE" ~ "Heterosexual Women"))
 ```
 
 
-```{r lifepartners}
+```{r lifepartners-data}
 mean_partners_data <- 
   myGSS |>
   na.omit(sexornt) |>
-  group_by(combos)|>
+  group_by(sexornt, sex)|>
   mutate(mean_part = mean(lifepartners)) |>
   mutate(sd = sd(lifepartners)) |>
   count(combos, mean_part, sd) |>
   mutate(se = sd/sqrt(n))
+```
 
-ggplot(data = mean_partners_data, aes(y = mean_part, x = combos)) +
-  geom_col() +
-  geom_errorbar(aes(ymin = mean_part - se, ymax = mean_part + se)) +
+```{r lifepartners-plor}
+ggplot(data = mean_partners_data, aes(y = mean_part, x = sexornt, fill = sex)) +
+  geom_col(position = "dodge") +
+  geom_text(aes(label = round(mean_part, 3), y = mean_part + 0.5, x = c(0.77, 1.225, 1.77, 2.225), position = sex)) +
+ # geom_errorbar(aes(ymin = mean_part - se, ymax = mean_part + se)) +
   labs(y = "Mean Number of Lifetime Sexual Partners",
-       x = "Sex and Sexual Orientation") +
-  theme_bw()
-
-# Healy
-
-
-
-```
-```{r}
-myGSS |> t.test(lifepartners)
+       x = "Sexual Orientation",
+       fill = "Sex") +
+  scale_fill_manual(values = c("pink", "blue")) +
+  theme_classic()
 ```
 
-```{r fear}
+```{r fear-manipulation}
 fear_prop_data <- myGSS |>
   na.omit(sexornt) |>
   group_by(sex, sexornt, combos) |>
@@ -109,28 +107,31 @@ fear_prop_data <- myGSS |>
   mutate(sd = sd(prop))
 ```
 
-```{r}
+```{r fear-data}
 fear_prop_data <- 
   myGSS |>
   na.omit(sexornt) |>
-  group_by(sex, sexornt, combos)|>
-  count(fear, combos) |>
+  group_by(sexornt, sex, combos)|>
+  count(fear) |>
   mutate(prop = n/sum(n))  |>
   mutate(sd = sd(prop)) |>
-  mutate(se = sd/sqrt(sum(n))) 
+  mutate(se = sd/sqrt(sum(n))) |>
+  filter(fear == "YES")# |>
+ # fct_relevel(as.character(combos), levels = c("Heterosexual Women", "Heterosexual Men", "Queer Women", "Queer Men"))
+
 
 fear_prop_data
 ```
-|>
-  mutate(prop = mean(lifepartners)) |>
-  mutate(sd = sd(lifepartners)) |>
-  count(combos, mean_part, sd) |>
-  mutate(se = sd/sqrt(n))
-```
 
-ggplot(data = fear_prop_data |> filter(fear == "YES"), aes(y = prop, x = combos)) +
-  geom_col() +
-  labs(y = "Percentage Afraid to Walk Alone At Night",
-       x = "Sex and Sexual Orientation") # +
+```{r fear-plot}
+ggplot(data = fear_prop_data, aes(y = prop, x = sexornt, fill = sex)) +
+  geom_col(position = "dodge") +
+    labs(y = "Percentage Afraid to Walk Alone at Night",
+       x = "Sexual Orientation",
+       fill = "Sex") +
+  geom_text(aes(label = round(prop, 3), y = prop + 0.02, x = c(0.775, 1.225, 1.775, 2.225), position = sex)) +
+  scale_fill_manual(values = c("pink", "blue")) + 
+  theme_classic() # +
  # geom_errorbar(aes(ymin = prop - sd, ymax = prop + sd))
 ```
+
